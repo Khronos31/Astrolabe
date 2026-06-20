@@ -32,7 +32,7 @@
 #define ICON_TAG_UP_OFFSET          -24
 #define ICON_TAG_DOWN_OFFSET        0
 
-#define ICON_NUM                    2
+#define ICON_NUM                    3
 
 
 /* Struct to hold icon value */
@@ -53,18 +53,21 @@ static std::array<Icon_t, ICON_NUM> icon_list;
 static std::array<uint32_t, ICON_NUM> icon_color_list = {
     0xB8860B,  // brass (dimmer)
     0x2A4898,  // deep blue (color temp)
+    0x1A6838,  // deep green (AC)
 };
 
 /* Icon tag */
 static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
     "LIGHT", "STUDY",
     "COLOR", "TEMP",
+    "AC", "CTRL",
 };
 
 /* Icon pic */
 static std::array<const uint16_t*, ICON_NUM> icon_pic_list = {
-    image_data_icon_lcd,
-    image_data_icon_rtc,
+    image_data_icon_brigntness,  // 調光
+    image_data_icon_temp,        // 調色
+    image_data_icon_temp,        // AC
 };
 
 /* Sprite to render icon with transparency */

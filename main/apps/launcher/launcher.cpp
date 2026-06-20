@@ -42,7 +42,7 @@ void Launcher::_menu_init()
     int a = 120;
     int b = 120;
     int r = 60;
-    int n = 2;
+    int n = 3;
     int x;
     int y;
     for (int i = 0; i < n; i++)
@@ -74,7 +74,7 @@ void Launcher::_icon_list_init()
     int a = 120;
     int b = 120;
     int r = 190 / 2;
-    int n = 2;
+    int n = 3;
     int x;
     int y;
     for (int i = 0; i < (int)icon_list.size(); i++)
