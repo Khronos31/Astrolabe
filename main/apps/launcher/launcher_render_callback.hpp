@@ -52,13 +52,13 @@ static std::array<Icon_t, ICON_NUM> icon_list;
 /* Icon color — muted, rich tones consistent with astrolabe palette */
 static std::array<uint32_t, ICON_NUM> icon_color_list = {
     0xB8860B,  // brass (dimmer)
-    0x2A4898,  // deep blue (color temp)
+    0xDAA520,  // yellow (color temp)
     0x1A6838,  // deep green (AC)
 };
 
 /* Icon tag */
 static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
-    "LIGHT", "STUDY",
+    "BRIGHTNESS", "STUDY",
     "COLOR", "TEMP",
     "AC", "CTRL",
 };
