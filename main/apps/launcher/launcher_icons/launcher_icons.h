@@ -1,3 +1,3 @@
 #pragma once
-#include "icon_lightbulb.h"
-#include "icon_sunny.h"
+#include "icon_lcd.h"
+#include "icon_rtc.h"

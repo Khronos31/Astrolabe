@@ -63,8 +63,8 @@ static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
 
 /* Icon pic */
 static std::array<const uint16_t*, ICON_NUM> icon_pic_list = {
-    image_data_icon_lightbulb,
-    image_data_icon_sunny,
+    image_data_icon_lcd,
+    image_data_icon_rtc,
 };
 
 /* Sprite to render icon with transparency */
@@ -80,7 +80,7 @@ struct LauncherRender_CB_t : public SMOOTH_MENU::SimpleMenuCallback_t
 
         void _drawAstrolabeBackground()
         {
-            _canvas->fillScreen(0xFF00FF);
+            _canvas->fillScreen(TFT_BLACK);
         }
 
     public:
@@ -110,11 +110,11 @@ struct LauncherRender_CB_t : public SMOOTH_MENU::SimpleMenuCallback_t
 
                 if (i == selector.targetItem)
                 {
-                    icon_sprite_list[i].pushRotateZoom(_canvas, x, y, 0, 1.1, 1.1, 0xFF00FF);
+                    icon_sprite_list[i].pushRotateZoom(_canvas, x, y, 0, 1.1, 1.1, TFT_BLACK);
                 }
                 else
                 {
-                    icon_sprite_list[i].pushRotateZoom(_canvas, x, y, 0, 1, 1, 0xFF00FF);
+                    icon_sprite_list[i].pushRotateZoom(_canvas, x, y, 0, 1, 1, TFT_BLACK);
                 }
             }
 
