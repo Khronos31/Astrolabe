@@ -24,6 +24,7 @@
 #include "../app_more_menu/app_more_menu.h"
 #include "../app_ble_server/app_ble_server.h"
 #include "../app_dimmer/app_dimmer.h"
+#include "../app_color_temp/app_color_temp.h"
 
 
 

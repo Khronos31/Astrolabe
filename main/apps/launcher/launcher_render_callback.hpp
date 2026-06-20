@@ -64,7 +64,7 @@ static std::array<uint32_t, ICON_NUM> icon_color_list = {
 /* Icon tag */
 static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
     "LIGHT", "STUDY",
-    "RTC", "TIME",
+    "COLOR", "TEMP",
     "RFID", "TEST",
     "BRIGHTNESS", "SET",
     "WIFI", "SCAN",
@@ -98,44 +98,7 @@ struct LauncherRender_CB_t : public SMOOTH_MENU::SimpleMenuCallback_t
 
         void _drawAstrolabeBackground()
         {
-            /* Dark base */
-            _canvas->fillScreen(THEME_COLOR_BG);
-
-            /* Outer limb — double ring for depth */
-            _canvas->drawCircle(120, 120, 116, BRASS_DARK);
-            _canvas->drawCircle(120, 120, 115, BRASS_MID);
-            _canvas->drawCircle(120, 120, 112, BRASS_DARK);
-
-            /* Graduation ticks on limb — major every 30° (icon positions), minor every 10°, small every 5° */
-            for (int deg = 0; deg < 360; deg += 5)
-            {
-                float rad = deg * (float)M_PI / 180.0f;
-                float c = cosf(rad), s = sinf(rad);
-                bool major  = (deg % 30 == 0);
-                bool medium = (deg % 10 == 0);
-                uint32_t col = major ? BRASS_BRIGHT : (medium ? BRASS_MID : BRASS_DARK);
-                int r_out = 114;
-                int r_in  = major ? 101 : (medium ? 107 : 111);
-                _canvas->drawLine(
-                    (int)(120 + r_out * c), (int)(120 + r_out * s),
-                    (int)(120 + r_in  * c), (int)(120 + r_in  * s),
-                    col
-                );
-            }
-
-            /* Icon orbit track (subtle) */
-            _canvas->drawCircle(120, 120, 95, BRASS_SUBTLE);
-
-            /* Selector orbit track */
-            _canvas->drawCircle(120, 120, 60, BRASS_DARK);
-
-            /* Inner decorative rings */
-            _canvas->drawCircle(120, 120, 35, BRASS_DARK);
-            _canvas->drawCircle(120, 120, 33, BRASS_SUBTLE);
-
-            /* Center pivot */
-            _canvas->fillSmoothCircle(120, 120, 4, BRASS_MID);
-            _canvas->fillSmoothCircle(120, 120, 2, BRASS_BRIGHT);
+            _canvas->fillScreen(TFT_BLACK);
         }
 
     public:

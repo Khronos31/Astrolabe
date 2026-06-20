@@ -276,7 +276,7 @@ void Launcher::_app_open_callback(uint8_t selectedNum)
             app_ptr = new MOONCAKE::USER_APP::AppDimmer;
             break;
         case 1:
-            app_ptr = new MOONCAKE::USER_APP::RTC_Test;
+            app_ptr = new MOONCAKE::USER_APP::AppColorTemp;
             break;
         case 2:
             app_ptr = new MOONCAKE::USER_APP::RFID_Test;
