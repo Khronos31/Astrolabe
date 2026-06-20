@@ -10,8 +10,8 @@
 
 #define CX  120
 #define CY  120
-// Arc: 225° (7:30) → 225+270=495° (4:30), sweep = 270°
-#define ARC_START  225.0f
+// Arc: 135° (4:30) → 135+270=405° (7:30), gap at bottom (6 o'clock)
+#define ARC_START  135.0f
 #define ARC_SWEEP  270.0f
 #define R_OUT       98
 #define R_IN        78
@@ -33,12 +33,16 @@ void AppDimmer::onCreate()
 
     _data.hal->mqtt.subscribe(TOPIC_STATE,
         [this](const char* /*topic*/, const char* payload, int /*len*/) {
+            // Ignore HA feedback while user is actively controlling (2s cooldown)
+            if (millis() - _data.last_local_change_ms < 2000) return;
+
             // Payload: {"state":"ON","brightness":200}
             _data.is_on = (strstr(payload, "\"ON\"") != nullptr);
             const char* b = strstr(payload, "\"brightness\":");
             if (b) sscanf(b + 13, "%d", &_data.brightness);
             _data.state_received = true;
             _log("rcv state=%s br=%d", _data.is_on ? "ON" : "OFF", _data.brightness);
+            _render();
         });
 
     _render();
@@ -59,6 +63,7 @@ void AppDimmer::onRunning()
 
         if (!_data.is_on && _data.brightness > 0) _data.is_on = true;
 
+        _data.last_local_change_ms = millis();
         _data.publish_pending = true;
         _render();
     }
@@ -71,22 +76,37 @@ void AppDimmer::onRunning()
         _data.publish_pending = false;
     }
 
-    /* Button */
+    /* Button short press → back to launcher */
     if (!_data.hal->encoder.btn.read())
     {
-        uint32_t t0 = millis();
-        while (!_data.hal->encoder.btn.read())
-        {
-            delay(10);
-            if (millis() - t0 > 800) {       // long press → exit
-                while (!_data.hal->encoder.btn.read()) delay(10);
-                destroyApp();
-                return;
-            }
+        while (!_data.hal->encoder.btn.read()) delay(10);
+        destroyApp();
+        return;
+    }
+
+    /* Long press (300ms) in center circle (r≤70) → toggle ON/OFF */
+    if (_data.hal->tp.isTouched())
+    {
+        _data.hal->tp.update();
+        int tx = _data.hal->tp.getTouchPointBuffer().x - CX;
+        int ty = _data.hal->tp.getTouchPointBuffer().y - CY;
+        if (tx * tx + ty * ty > 70 * 70) {
+            while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
+            return;
         }
-        /* Short press → toggle */
+        uint32_t press_start = millis();
+        bool long_press = false;
+        while (_data.hal->tp.isTouched()) {
+            delay(10);
+            _data.hal->tp.update();
+            if (millis() - press_start >= 100) { long_press = true; break; }
+        }
+        while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
+        if (!long_press) return;
+        _data.hal->buzz.tone(4000, 20);
         _data.is_on = !_data.is_on;
         if (_data.is_on && _data.brightness == 0) _data.brightness = 128;
+        _data.last_local_change_ms = millis();
         _publish();
         _render();
     }
@@ -121,18 +141,6 @@ void AppDimmer::_render()
         canvas->fillArc(CX, CY, R_OUT, R_IN, ARC_START, angle, col);
     }
 
-    /* Arc tip dot */
-    {
-        float tip_angle = ARC_START;
-        if (_data.is_on && _data.brightness > 0)
-            tip_angle += (_data.brightness / 255.0f) * ARC_SWEEP;
-        float rad = tip_angle * (float)M_PI / 180.0f;
-        int r_mid = (R_OUT + R_IN) / 2;
-        int tx = CX + (int)(r_mid * sinf(rad));   // LovyanGFX: 0°=top
-        int ty = CY - (int)(r_mid * cosf(rad));
-        canvas->fillSmoothCircle(tx, ty, 5, (uint32_t)0xDAA520);
-    }
-
     /* Brightness % in center */
     int pct = (_data.brightness * 100 + 127) / 255;
     char pct_str[12];
@@ -159,7 +167,7 @@ void AppDimmer::_render()
     canvas->setFont(&fonts::Font2);
     canvas->setTextSize(1.0f);
     canvas->setTextColor((uint32_t)0x2A1E06);
-    canvas->drawCenterString("hold: back", CX, 210);
+    canvas->drawCenterString("press: back", CX, 210);
 
     canvas->pushSprite(0, 0);
 }
