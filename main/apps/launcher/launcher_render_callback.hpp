@@ -114,12 +114,10 @@ struct LauncherRender_CB_t : public SMOOTH_MENU::SimpleMenuCallback_t
                 if (i == selector.targetItem)
                 {
                     _canvas->fillSmoothCircle(x, y, selector.width + ICON_SELECTED_R_OFFSET, icon_list[i].color);
-                    icon_sprite_list[i].pushRotateZoom(_canvas, x, y, 0, 1.1, 1.1, TFT_BLACK);
                 }
                 else
                 {
                     _canvas->fillSmoothCircle(x, y, ICON_RADIUS, icon_list[i].color);
-                    icon_sprite_list[i].pushRotateZoom(_canvas, x, y, 0, 1, 1, TFT_BLACK);
                 }
             }
 

@@ -65,9 +65,7 @@ void Launcher::_icon_list_init()
         icon_list[i].tag_up = icon_tag_list[i * 2];
         icon_list[i].tag_down = icon_tag_list[i * 2 + 1];
 
-        /* Push Icon pic into sprite */
-        icon_sprite_list[i].createSprite(42, 42);
-        icon_sprite_list[i].pushImage(0, 0, 42, 42, icon_pic_list[i]);
+        (void)icon_sprite_list[i]; // unused
     }
 
     /* Icon position */
