@@ -12,6 +12,7 @@
 #include <esp_log.h>
 #include <driver/gpio.h>
 #include <string.h>
+#include <esp_sntp.h>
 #include "file_system/wear_levelling.h"
 #include "../credentials.h"
 
@@ -72,6 +73,7 @@ namespace HAL
     static int _last_count = 0;
     void HAL::_encoder_moved_callback(ESP32Encoder* encoder, void* userData)
     {
+        ((HAL*)userData)->last_activity_ms = (uint32_t)(esp_timer_get_time() / 1000);
         int new_shit = static_cast<int>(encoder->getCount()) / 2;
         if (new_shit < _last_count)
         {
@@ -128,6 +130,13 @@ namespace HAL
             return;
         }
         mqtt.begin(ASTROLABE_MQTT_URI, ASTROLABE_MQTT_USER, ASTROLABE_MQTT_PASS);
+
+        setenv("TZ", "JST-9", 1);
+        tzset();
+        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        esp_sntp_setservername(0, "pool.ntp.org");
+        esp_sntp_init();
+        ESP_LOGI(TAG, "SNTP init done");
     }
 
     void HAL::init()

@@ -32,7 +32,7 @@
 #define ICON_TAG_UP_OFFSET          -24
 #define ICON_TAG_DOWN_OFFSET        0
 
-#define ICON_NUM                    3
+#define ICON_NUM                    4
 
 
 /* Struct to hold icon value */
@@ -51,23 +51,26 @@ static std::array<Icon_t, ICON_NUM> icon_list;
 
 /* Icon color — muted, rich tones consistent with astrolabe palette */
 static std::array<uint32_t, ICON_NUM> icon_color_list = {
-    0xB8860B,  // brass (dimmer)
-    0xDAA520,  // yellow (color temp)
+    0xB8860B,  // brass (light)
     0x1A6838,  // deep green (AC)
+    0x2A1060,  // deep purple (goodnight)
+    0x0A2040,  // dark navy (clock)
 };
 
 /* Icon tag */
 static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
-    "BRIGHTNESS", "",
-    "COLOR", "TEMP",
+    "LIGHT", "",
     "AC", "CTRL",
+    "GOOD", "NIGHT",
+    "CLOCK", "",
 };
 
 /* Icon pic */
 static std::array<const uint16_t*, ICON_NUM> icon_pic_list = {
-    image_data_icon_brigntness,  // 調光
-    image_data_icon_temp,        // 調色
+    image_data_icon_brigntness,  // light
     image_data_icon_temp,        // AC
+    image_data_icon_moon,        // goodnight
+    image_data_icon_rtc,         // clock
 };
 
 /* Sprite to render icon with transparency */
@@ -111,14 +114,11 @@ struct LauncherRender_CB_t : public SMOOTH_MENU::SimpleMenuCallback_t
                 x = (menuItemList[i]->x - 120) * icon_r / 120 + 120;
                 y = (menuItemList[i]->y - 120) * icon_r / 120 + 120;
 
-                if (i == selector.targetItem)
-                {
-                    _canvas->fillSmoothCircle(x, y, selector.width + ICON_SELECTED_R_OFFSET, icon_list[i].color);
-                }
-                else
-                {
-                    _canvas->fillSmoothCircle(x, y, ICON_RADIUS, icon_list[i].color);
-                }
+                float radius = (i == (int)selector.targetItem)
+                              ? (float)(selector.width + ICON_SELECTED_R_OFFSET)
+                              : (float)ICON_RADIUS;
+                float zoom = radius / (float)ICON_RADIUS;
+                icon_sprite_list[i].pushRotateZoom(_canvas, x, y, 0, zoom, zoom, TFT_BLACK);
             }
 
             /* Draw icon tag at center */

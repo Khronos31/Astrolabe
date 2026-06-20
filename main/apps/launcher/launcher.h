@@ -15,8 +15,10 @@
 #include "launcher_render_callback.hpp"
 #include "../utilities/gui_base/gui_base.h"
 
-#include "../app_dimmer/app_dimmer.h"
-#include "../app_color_temp/app_color_temp.h"
+#include "../app_light/app_light.h"
+#include "../app_ac/app_ac.h"
+#include "../app_goodnight/app_goodnight.h"
+#include "../app_clock/app_clock.h"
 
 
 
@@ -45,7 +47,8 @@ namespace MOONCAKE
                 void _launcher_init();
                 void _launcher_loop();
                 void _app_open_callback(uint8_t selectedNum);
-                void _simple_app_manager(MOONCAKE::APP_BASE* app);
+                bool _simple_app_manager(MOONCAKE::APP_BASE* app);
+                void _idle_loop(bool start_in_light = false);
 
             public:
                 Launcher() = default;

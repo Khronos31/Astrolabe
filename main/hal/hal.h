@@ -65,6 +65,9 @@ namespace HAL
         WiFiSTA    wifi;
         MQTTClient mqtt;
 
+        /* Last user interaction timestamp (ms) — updated by encoder/button callbacks */
+        uint32_t last_activity_ms = 0;
+
         /**
          * @brief Init
          *

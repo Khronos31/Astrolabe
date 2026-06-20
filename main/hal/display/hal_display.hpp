@@ -65,7 +65,7 @@ class LGFX_StampRing : public lgfx::LGFX_Device {
             cfg.panel_height = 240;
             cfg.offset_x = 0;
             cfg.offset_y = 0;
-            cfg.offset_rotation = 0;
+            cfg.offset_rotation = 3; // 90° CCW — device is mounted 90° CW
             cfg.dummy_read_pixel = 8;
             cfg.dummy_read_bits = 1;
             cfg.readable = true;

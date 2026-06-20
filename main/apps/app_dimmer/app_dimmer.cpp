@@ -99,7 +99,7 @@ void AppDimmer::onRunning()
         while (_data.hal->tp.isTouched()) {
             delay(10);
             _data.hal->tp.update();
-            if (millis() - press_start >= 100) { long_press = true; break; }
+            if (millis() - press_start >= 70) { long_press = true; break; }
         }
         while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
         if (!long_press) return;

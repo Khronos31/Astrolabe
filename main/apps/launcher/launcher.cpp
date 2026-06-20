@@ -11,6 +11,8 @@
 #include "launcher.h"
 #include "../common_define.h"
 
+#define IDLE_TIMEOUT_MS 20000
+
 
 using namespace MOONCAKE::USER_APP;
 
@@ -42,7 +44,7 @@ void Launcher::_menu_init()
     int a = 120;
     int b = 120;
     int r = 60;
-    int n = 3;
+    int n = 4;
     int x;
     int y;
     for (int i = 0; i < n; i++)
@@ -65,14 +67,16 @@ void Launcher::_icon_list_init()
         icon_list[i].tag_up = icon_tag_list[i * 2];
         icon_list[i].tag_down = icon_tag_list[i * 2 + 1];
 
-        (void)icon_sprite_list[i]; // unused
+        icon_sprite_list[i].setColorDepth(16);
+        icon_sprite_list[i].createSprite(42, 42);
+        icon_sprite_list[i].pushImage(0, 0, 42, 42, icon_pic_list[i]);
     }
 
     /* Icon position */
     int a = 120;
     int b = 120;
     int r = 190 / 2;
-    int n = 3;
+    int n = 4;
     int x;
     int y;
     for (int i = 0; i < (int)icon_list.size(); i++)
@@ -95,23 +99,30 @@ void Launcher::_launcher_init()
 
 void Launcher::_launcher_loop()
 {
+    /* Idle timeout from launcher → Clock */
+    if (millis() - _data.hal->last_activity_ms >= IDLE_TIMEOUT_MS)
+    {
+        _idle_loop();
+        _data.hal->last_activity_ms = millis();
+        return;
+    }
+
     _data.menu->update(millis());
     _canvas_update();
-    // delay(5);
 
     /* If scrolled */
     if (_data.hal->encoder.wasMoved(true))
     {
-        // printf("%d\n", _data.hal->encoder.getPosition());
         if (_data.hal->encoder.getDirection() < 1)
             _data.menu->goNext();
-        else 
+        else
             _data.menu->goLast();
     }
 
     /* If button pressed */
     if (!_data.hal->encoder.btn.read())
     {
+        _data.hal->last_activity_ms = millis();
         _data.menu->getSelector()->pressed();
 
         /* Hold until button release */
@@ -137,6 +148,7 @@ void Launcher::_launcher_loop()
     /* If touched */
     if (_data.hal->tp.isTouched())
     {
+        _data.hal->last_activity_ms = millis();
         _data.hal->tp.update();
 
         // printf("%d %d\n", _data.hal->tp.getTouchPointBuffer().x, _data.hal->tp.getTouchPointBuffer().y);
@@ -271,10 +283,16 @@ void Launcher::_app_open_callback(uint8_t selectedNum)
     switch (selectedNum)
     {
         case 0:
-            app_ptr = new MOONCAKE::USER_APP::AppDimmer;
+            app_ptr = new MOONCAKE::USER_APP::AppLight;
             break;
         case 1:
-            app_ptr = new MOONCAKE::USER_APP::AppColorTemp;
+            app_ptr = new MOONCAKE::USER_APP::AppAC;
+            break;
+        case 2:
+            app_ptr = new MOONCAKE::USER_APP::AppGoodnight;
+            break;
+        case 3:
+            app_ptr = new MOONCAKE::USER_APP::AppClock;
             break;
         default:
             break;
@@ -290,11 +308,21 @@ void Launcher::_app_open_callback(uint8_t selectedNum)
             app_ptr->getGui()->init(_data.hal->canvas, &icon_sprite_list[selectedNum]);
         }
 
-        /* Run app */
-        _simple_app_manager(app_ptr);
-        
-        /* Free app */
+        /* Run app — returns true if idle timeout */
+        bool timed_out = _simple_app_manager(app_ptr);
+
+        /* Clock app may want to jump directly to Light */
+        bool wants_light = false;
+        if (selectedNum == 3)
+            wants_light = static_cast<MOONCAKE::USER_APP::AppClock*>(app_ptr)->wantsLight();
+
         delete app_ptr;
+
+        /* On idle timeout or Clock→Light request: enter idle loop */
+        if (timed_out || wants_light)
+            _idle_loop(wants_light);
+
+        return;
     }
 
 
@@ -318,11 +346,38 @@ void Launcher::_app_open_callback(uint8_t selectedNum)
 }
 
 
-void Launcher::_simple_app_manager(MOONCAKE::APP_BASE* app)
+void Launcher::_idle_loop(bool start_in_light)
+{
+    bool in_light = start_in_light;
+    while (true)
+    {
+        if (!in_light)
+        {
+            MOONCAKE::USER_APP::AppClock* clock = new MOONCAKE::USER_APP::AppClock;
+            _simple_app_manager(clock);
+            bool wants_light = clock->wantsLight();
+            delete clock;
+            if (!wants_light) return;   // ボタン → ランチャーへ
+            in_light = true;
+        }
+        else
+        {
+            MOONCAKE::APP_BASE* light = new MOONCAKE::USER_APP::AppLight;
+            bool timed_out = _simple_app_manager(light);
+            delete light;
+            if (!timed_out) return;     // ボタン → ランチャーへ
+            in_light = false;           // アイドルタイムアウト → 時計へ戻る
+        }
+    }
+}
+
+
+bool Launcher::_simple_app_manager(MOONCAKE::APP_BASE* app)
 {
     app->setUserData((void*)_data.hal);
     app->onSetup();
     app->onCreate();
+    _data.hal->last_activity_ms = millis();
     while (1)
     {
         app->onRunning();
@@ -330,15 +385,13 @@ void Launcher::_simple_app_manager(MOONCAKE::APP_BASE* app)
         {
             app->resetGoingDestroyFlag();
             app->onDestroy();
-            break;
+            return false;
         }
-
-        // if (_data.hal->encoder.btn.pressed())
-        // {
-        //     /* Hold until button release */
-        //     while (!_data.hal->encoder.btn.read());
-        //     break;
-        // }
+        if (millis() - _data.hal->last_activity_ms >= IDLE_TIMEOUT_MS)
+        {
+            app->onDestroy();
+            return true;
+        }
     }
 }
 
@@ -367,9 +420,10 @@ void Launcher::onSetup()
 void Launcher::onCreate()
 {
     _log("onCreate");
-    
+
     _launcher_init();
     _data.menu->getSelector()->reset(millis());
+    _data.hal->last_activity_ms = millis();
 }
 
 
