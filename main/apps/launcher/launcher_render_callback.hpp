@@ -32,7 +32,7 @@
 #define ICON_TAG_UP_OFFSET          -24
 #define ICON_TAG_DOWN_OFFSET        0
 
-#define ICON_NUM                    8
+#define ICON_NUM                    2
 
 
 /* Struct to hold icon value */
@@ -51,38 +51,20 @@ static std::array<Icon_t, ICON_NUM> icon_list;
 
 /* Icon color — muted, rich tones consistent with astrolabe palette */
 static std::array<uint32_t, ICON_NUM> icon_color_list = {
-    0xB04030,  // deep red
-    0x2A4898,  // deep blue
-    0x1A6838,  // deep green
-    0x0A5850,  // deep teal
-    0x9A4E20,  // deep amber
-    0x0A5840,  // deep green-teal
-    0x004E9A,  // deep cobalt
-    0x2A3E5A   // slate blue
+    0xB8860B,  // brass (dimmer)
+    0x2A4898,  // deep blue (color temp)
 };
 
 /* Icon tag */
 static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
     "LIGHT", "STUDY",
     "COLOR", "TEMP",
-    "", "",
-    "", "",
-    "", "",
-    "", "",
-    "", "",
-    "", ""
 };
 
 /* Icon pic */
 static std::array<const uint16_t*, ICON_NUM> icon_pic_list = {
     image_data_icon_lcd,
     image_data_icon_rtc,
-    image_data_icon_rfid,
-    image_data_icon_brigntness,
-    image_data_icon_wifi,
-    image_data_icon_ble,
-    image_data_icon_temp,
-    image_data_icon_more
 };
 
 /* Sprite to render icon with transparency */
