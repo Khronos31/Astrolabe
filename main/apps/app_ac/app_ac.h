@@ -1,13 +1,11 @@
 #pragma once
-#include "../../hal/hal.h"
-#include "../app.h"
+#include "../app_ui.h"
 
 namespace MOONCAKE { namespace USER_APP {
 
 namespace AC {
     enum Mode_t { MODE_COOL = 0, MODE_HEAT = 1 };
     struct Data_t {
-        HAL::HAL* hal = nullptr;
         bool is_on = false;
         float temperature = 26.0f;
         Mode_t mode = MODE_COOL;
@@ -18,7 +16,7 @@ namespace AC {
     };
 }
 
-class AppAC : public APP_BASE {
+class AppAC : public AppUI {
 private:
     const char* _tag = "app_ac";
     AC::Data_t _data;

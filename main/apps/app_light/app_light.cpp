@@ -1,5 +1,4 @@
 #include "app_light.h"
-#include "../common_define.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -12,24 +11,15 @@
 #define COLOR_TEMP_MIN      2700
 #define COLOR_TEMP_MAX      6500
 
-#define CX  120
-#define CY  120
-#define ARC_START  135.0f
-#define ARC_SWEEP  270.0f
-#define R_OUT       98
-#define R_IN        78
-
-#define GHOST_MS     70   // below this = ghost touch
-#define LONGPRESS_MS 500  // above this = mode switch
-
 using namespace MOONCAKE::USER_APP;
+using namespace MOONCAKE::USER_APP::UI;
 
 
 void AppLight::onSetup()
 {
     setAllowBgRunning(false);
     LIGHT::Data_t d; _data = d;
-    _data.hal = (HAL::HAL*)getUserData();
+    _bind_hal();
 }
 
 
@@ -37,7 +27,7 @@ void AppLight::onCreate()
 {
     _log("onCreate");
 
-    _data.hal->mqtt.subscribe(TOPIC_STATE,
+    hal->mqtt.subscribe(TOPIC_STATE,
         [this](const char* /*topic*/, const char* payload, int /*len*/) {
             if (millis() - _data.last_local_change_ms < 2000) return;
 
@@ -61,9 +51,9 @@ void AppLight::onCreate()
 
 void AppLight::_handle_encoder()
 {
-    if (!_data.hal->encoder.wasMoved(true)) return;
+    if (!hal->encoder.wasMoved(true)) return;
 
-    int dir = _data.hal->encoder.getDirection();
+    int dir = hal->encoder.getDirection();
 
     if (_data.mode == LIGHT::MODE_DIMMER) {
         _data.brightness += (dir < 1) ? BRIGHTNESS_STEP : -BRIGHTNESS_STEP;
@@ -77,7 +67,7 @@ void AppLight::_handle_encoder()
     }
 
     _data.last_local_change_ms = millis();
-    _data.hal->last_activity_ms = millis();
+    _mark_activity();
     _data.publish_pending = true;
     _render();
 }
@@ -85,40 +75,21 @@ void AppLight::_handle_encoder()
 
 void AppLight::_handle_touch()
 {
-    if (!_data.hal->tp.isTouched()) return;
-    _data.hal->tp.update();
+    /* Long press: switch DIM⇔CLR immediately. Short press: toggle ON/OFF. */
+    Press p = _handle_center_touch(LONGPRESS_MS, [&] {
+        _data.mode = (_data.mode == LIGHT::MODE_DIMMER)
+                     ? LIGHT::MODE_COLOR_TEMP : LIGHT::MODE_DIMMER;
+        hal->buzz.tone(3000, 40);
+        _render();
+    });
 
-    int tx = _data.hal->tp.getTouchPointBuffer().x - CX;
-    int ty = _data.hal->tp.getTouchPointBuffer().y - CY;
-    if (tx * tx + ty * ty > 70 * 70) {
-        while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
-        return;
-    }
+    if (p != Press::SHORT) return;
 
-    uint32_t press_start = millis();
-    while (_data.hal->tp.isTouched()) {
-        delay(10);
-        _data.hal->tp.update();
-        if (millis() - press_start >= LONGPRESS_MS) {
-            // Switch mode immediately on threshold, then drain
-            _data.mode = (_data.mode == LIGHT::MODE_DIMMER)
-                         ? LIGHT::MODE_COLOR_TEMP : LIGHT::MODE_DIMMER;
-            _data.hal->buzz.tone(3000, 40);
-            _render();
-            while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
-            return;
-        }
-    }
-
-    uint32_t duration = millis() - press_start;
-    if (duration < GHOST_MS) return;
-
-    // Short press: toggle ON/OFF
     _data.is_on = !_data.is_on;
     if (_data.is_on && _data.brightness == 0) _data.brightness = 128;
-    _data.hal->buzz.tone(4000, 20);
+    hal->buzz.tone(4000, 20);
     _data.last_local_change_ms = millis();
-    _data.hal->last_activity_ms = millis();
+    _mark_activity();
     if (_data.mode == LIGHT::MODE_DIMMER)
         _publish_brightness();
     else
@@ -129,7 +100,7 @@ void AppLight::_handle_touch()
 
 void AppLight::onRunning()
 {
-    _data.hal->mqtt.poll();
+    hal->mqtt.poll();
 
     _handle_encoder();
 
@@ -143,8 +114,7 @@ void AppLight::onRunning()
         _data.publish_pending = false;
     }
 
-    if (!_data.hal->encoder.btn.read()) {
-        while (!_data.hal->encoder.btn.read()) delay(10);
+    if (_back_button_pressed()) {
         destroyApp();
         return;
     }
@@ -158,7 +128,7 @@ void AppLight::_publish_brightness()
     char buf[64];
     snprintf(buf, sizeof(buf), "{\"state\":\"%s\",\"brightness\":%d}",
              _data.is_on ? "ON" : "OFF", _data.brightness);
-    _data.hal->mqtt.publish(TOPIC_SET, buf);
+    hal->mqtt.publish(TOPIC_SET, buf);
     _data.last_publish_ms = millis();
     _log("pub %s", buf);
 }
@@ -168,7 +138,7 @@ void AppLight::_publish_color_temp()
 {
     char buf[40];
     snprintf(buf, sizeof(buf), "{\"color_temp_kelvin\":%d}", _data.color_temp);
-    _data.hal->mqtt.publish(TOPIC_SET, buf);
+    hal->mqtt.publish(TOPIC_SET, buf);
     _data.last_publish_ms = millis();
     _log("pub %s", buf);
 }
@@ -179,7 +149,7 @@ void AppLight::_publish_color_temp_with_state()
     char buf[64];
     snprintf(buf, sizeof(buf), "{\"state\":\"%s\",\"color_temp_kelvin\":%d}",
              _data.is_on ? "ON" : "OFF", _data.color_temp);
-    _data.hal->mqtt.publish(TOPIC_SET, buf);
+    hal->mqtt.publish(TOPIC_SET, buf);
     _data.last_publish_ms = millis();
     _log("pub %s", buf);
 }
@@ -187,7 +157,7 @@ void AppLight::_publish_color_temp_with_state()
 
 void AppLight::_render()
 {
-    auto* canvas = _data.hal->canvas;
+    auto* canvas = hal->canvas;
 
     if (_data.mode == LIGHT::MODE_DIMMER) {
         canvas->fillScreen((uint32_t)0x0D0A04);

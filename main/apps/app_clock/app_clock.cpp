@@ -1,13 +1,9 @@
 #include "app_clock.h"
-#include "../common_define.h"
 #include <cstdio>
 #include <ctime>
 
-#define CX       120
-#define CY       120
-#define GHOST_MS  70
-
 using namespace MOONCAKE::USER_APP;
+using namespace MOONCAKE::USER_APP::UI;
 
 static const char* _wday[] = {"SUN","MON","TUE","WED","THU","FRI","SAT"};
 
@@ -16,7 +12,7 @@ void AppClock::onSetup()
 {
     setAllowBgRunning(false);
     CLOCK::Data_t d; _data = d;
-    _data.hal = (HAL::HAL*)getUserData();
+    _bind_hal();
 }
 
 
@@ -27,49 +23,34 @@ void AppClock::onCreate()
 }
 
 
-void AppClock::_handle_touch()
-{
-    if (!_data.hal->tp.isTouched()) return;
-    _data.hal->tp.update();
-    int tx = _data.hal->tp.getTouchPointBuffer().x - CX;
-    int ty = _data.hal->tp.getTouchPointBuffer().y - CY;
-    if (tx * tx + ty * ty > 70 * 70) {
-        while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
-        return;
-    }
-    uint32_t press_start = millis();
-    while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
-    if (millis() - press_start < GHOST_MS) return;
-
-    _data.hal->buzz.tone(4000, 20);
-    _data.wants_light = true;
-    destroyApp();
-}
-
-
 void AppClock::onRunning()
 {
     // Clock IS the idle screen — keep activity timestamp alive so _simple_app_manager never times out
-    _data.hal->last_activity_ms = millis();
+    _mark_activity();
 
-    _data.hal->mqtt.poll();
+    hal->mqtt.poll();
 
     // Encoder rotate → go to Light
-    if (_data.hal->encoder.wasMoved(true)) {
-        _data.hal->buzz.tone(4000, 20);
+    if (hal->encoder.wasMoved(true)) {
+        hal->buzz.tone(4000, 20);
         _data.wants_light = true;
         destroyApp();
         return;
     }
 
     // Button → back to Launcher
-    if (!_data.hal->encoder.btn.read()) {
-        while (!_data.hal->encoder.btn.read()) delay(10);
+    if (_back_button_pressed()) {
         destroyApp();
         return;
     }
 
-    _handle_touch();
+    // Center tap → go to Light
+    if (_handle_center_touch() == Press::SHORT) {
+        hal->buzz.tone(4000, 20);
+        _data.wants_light = true;
+        destroyApp();
+        return;
+    }
 
     if (millis() - _data.last_render_ms >= 500) {
         _render();
@@ -85,7 +66,7 @@ void AppClock::_render()
     localtime_r(&now, &t);
     bool time_valid = (t.tm_year > 100);
 
-    auto* canvas = _data.hal->canvas;
+    auto* canvas = hal->canvas;
     canvas->fillScreen((uint32_t)0x020408);
     canvas->setFont(GUI_FONT_CN_BIG);
 

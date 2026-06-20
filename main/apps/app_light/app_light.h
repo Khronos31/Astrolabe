@@ -1,13 +1,11 @@
 #pragma once
-#include "../../hal/hal.h"
-#include "../app.h"
+#include "../app_ui.h"
 
 namespace MOONCAKE { namespace USER_APP {
 
 namespace LIGHT {
     enum Mode_t { MODE_DIMMER = 0, MODE_COLOR_TEMP = 1 };
     struct Data_t {
-        HAL::HAL* hal = nullptr;
         bool is_on = true;
         int brightness = 128;
         int color_temp = 4000;
@@ -19,7 +17,7 @@ namespace LIGHT {
     };
 }
 
-class AppLight : public APP_BASE {
+class AppLight : public AppUI {
 private:
     const char* _tag = "app_light";
     LIGHT::Data_t _data;

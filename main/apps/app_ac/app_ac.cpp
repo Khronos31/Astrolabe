@@ -1,5 +1,4 @@
 #include "app_ac.h"
-#include "../common_define.h"
 #include <cstdio>
 #include <cstring>
 
@@ -10,24 +9,15 @@
 #define TEMP_MIN   18.0f
 #define TEMP_MAX   30.0f
 
-#define CX  120
-#define CY  120
-#define ARC_START  135.0f
-#define ARC_SWEEP  270.0f
-#define R_OUT       98
-#define R_IN        78
-
-#define GHOST_MS     70
-#define LONGPRESS_MS 500
-
 using namespace MOONCAKE::USER_APP;
+using namespace MOONCAKE::USER_APP::UI;
 
 
 void AppAC::onSetup()
 {
     setAllowBgRunning(false);
     AC::Data_t d; _data = d;
-    _data.hal = (HAL::HAL*)getUserData();
+    _bind_hal();
 }
 
 
@@ -35,7 +25,7 @@ void AppAC::onCreate()
 {
     _log("onCreate");
 
-    _data.hal->mqtt.subscribe(TOPIC_STATE,
+    hal->mqtt.subscribe(TOPIC_STATE,
         [this](const char* /*topic*/, const char* payload, int /*len*/) {
             if (millis() - _data.last_local_change_ms < 2000) return;
 
@@ -62,15 +52,15 @@ void AppAC::onCreate()
 
 void AppAC::_handle_encoder()
 {
-    if (!_data.hal->encoder.wasMoved(true)) return;
+    if (!hal->encoder.wasMoved(true)) return;
 
-    int dir = _data.hal->encoder.getDirection();
+    int dir = hal->encoder.getDirection();
     _data.temperature += (dir < 1) ? TEMP_STEP : -TEMP_STEP;
     if (_data.temperature > TEMP_MAX) _data.temperature = TEMP_MAX;
     if (_data.temperature < TEMP_MIN) _data.temperature = TEMP_MIN;
 
     _data.last_local_change_ms = millis();
-    _data.hal->last_activity_ms = millis();
+    _mark_activity();
     _data.publish_pending = true;
     _render();
 }
@@ -78,42 +68,23 @@ void AppAC::_handle_encoder()
 
 void AppAC::_handle_touch()
 {
-    if (!_data.hal->tp.isTouched()) return;
-    _data.hal->tp.update();
+    /* Long press: switch COOL⇔HEAT (turn on). Short press: toggle ON/OFF. */
+    Press p = _handle_center_touch(LONGPRESS_MS, [&] {
+        _data.mode = (_data.mode == AC::MODE_COOL) ? AC::MODE_HEAT : AC::MODE_COOL;
+        _data.is_on = true;
+        hal->buzz.tone(3000, 40);
+        _data.last_local_change_ms = millis();
+        _mark_activity();
+        _publish_hvac_mode();
+        _render();
+    });
 
-    int tx = _data.hal->tp.getTouchPointBuffer().x - CX;
-    int ty = _data.hal->tp.getTouchPointBuffer().y - CY;
-    if (tx * tx + ty * ty > 70 * 70) {
-        while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
-        return;
-    }
+    if (p != Press::SHORT) return;
 
-    uint32_t press_start = millis();
-    while (_data.hal->tp.isTouched()) {
-        delay(10);
-        _data.hal->tp.update();
-        if (millis() - press_start >= LONGPRESS_MS) {
-            // Switch mode immediately, turn on if off
-            _data.mode = (_data.mode == AC::MODE_COOL) ? AC::MODE_HEAT : AC::MODE_COOL;
-            _data.is_on = true;
-            _data.hal->buzz.tone(3000, 40);
-            _data.last_local_change_ms = millis();
-    _data.hal->last_activity_ms = millis();
-            _publish_hvac_mode();
-            _render();
-            while (_data.hal->tp.isTouched()) { delay(10); _data.hal->tp.update(); }
-            return;
-        }
-    }
-
-    uint32_t duration = millis() - press_start;
-    if (duration < GHOST_MS) return;
-
-    // Short press: toggle ON/OFF
     _data.is_on = !_data.is_on;
-    _data.hal->buzz.tone(4000, 20);
+    hal->buzz.tone(4000, 20);
     _data.last_local_change_ms = millis();
-    _data.hal->last_activity_ms = millis();
+    _mark_activity();
     if (_data.is_on)
         _publish_hvac_mode();
     else
@@ -124,7 +95,7 @@ void AppAC::_handle_touch()
 
 void AppAC::onRunning()
 {
-    _data.hal->mqtt.poll();
+    hal->mqtt.poll();
 
     _handle_encoder();
 
@@ -135,8 +106,7 @@ void AppAC::onRunning()
         _data.publish_pending = false;
     }
 
-    if (!_data.hal->encoder.btn.read()) {
-        while (!_data.hal->encoder.btn.read()) delay(10);
+    if (_back_button_pressed()) {
         destroyApp();
         return;
     }
@@ -150,7 +120,7 @@ void AppAC::_publish_hvac_mode()
     char buf[48];
     snprintf(buf, sizeof(buf), "{\"hvac_mode\":\"%s\"}",
              _data.mode == AC::MODE_COOL ? "cool" : "heat");
-    _data.hal->mqtt.publish(TOPIC_SET, buf);
+    hal->mqtt.publish(TOPIC_SET, buf);
     _data.last_publish_ms = millis();
     _log("pub %s", buf);
 }
@@ -158,7 +128,7 @@ void AppAC::_publish_hvac_mode()
 
 void AppAC::_publish_off()
 {
-    _data.hal->mqtt.publish(TOPIC_SET, "{\"state\":\"OFF\"}");
+    hal->mqtt.publish(TOPIC_SET, "{\"state\":\"OFF\"}");
     _data.last_publish_ms = millis();
     _log("pub OFF");
 }
@@ -168,7 +138,7 @@ void AppAC::_publish_temperature()
 {
     char buf[40];
     snprintf(buf, sizeof(buf), "{\"temperature\":%.1f}", _data.temperature);
-    _data.hal->mqtt.publish(TOPIC_SET, buf);
+    hal->mqtt.publish(TOPIC_SET, buf);
     _data.last_publish_ms = millis();
     _log("pub %s", buf);
 }
@@ -176,7 +146,7 @@ void AppAC::_publish_temperature()
 
 void AppAC::_render()
 {
-    auto* canvas = _data.hal->canvas;
+    auto* canvas = hal->canvas;
 
     // Mode-dependent colors
     uint32_t bg, bg_arc, arc_col, text_col, dim_col;
