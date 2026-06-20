@@ -273,7 +273,7 @@ void Launcher::_app_open_callback(uint8_t selectedNum)
     switch (selectedNum)
     {
         case 0:
-            app_ptr = new MOONCAKE::USER_APP::LCD_Test;
+            app_ptr = new MOONCAKE::USER_APP::AppDimmer;
             break;
         case 1:
             app_ptr = new MOONCAKE::USER_APP::RTC_Test;
