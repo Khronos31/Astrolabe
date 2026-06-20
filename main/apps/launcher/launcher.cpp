@@ -42,13 +42,13 @@ void Launcher::_menu_init()
     int a = 120;
     int b = 120;
     int r = 60;
-    int n = 10;
+    int n = 12;
     int x;
     int y;
     for (int i = 0; i < n; i++)
     {
-        x = a + r * std::cos(2 * 3.14 * i / n);
-        y = b + r * std::sin(2 * 3.14 * i / n);
+        x = a + r * std::cos(2.0 * M_PI * i / n - M_PI / 2.0);
+        y = b + r * std::sin(2.0 * M_PI * i / n - M_PI / 2.0);
         _data.menu->getMenu()->addItem("", x, y, ICON_RADIUS, ICON_RADIUS);
     }
 }
@@ -74,13 +74,13 @@ void Launcher::_icon_list_init()
     int a = 120;
     int b = 120;
     int r = 190 / 2;
-    int n = 10;
+    int n = 12;
     int x;
     int y;
-    for (int i = 0; i < icon_list.size(); i++)
+    for (int i = 0; i < (int)icon_list.size(); i++)
     {
-        x = a + r * std::cos(2 * 3.14 * i / n);
-        y = b + r * std::sin(2 * 3.14 * i / n);
+        x = a + r * std::cos(2.0 * M_PI * i / n - M_PI / 2.0);
+        y = b + r * std::sin(2.0 * M_PI * i / n - M_PI / 2.0);
 
         icon_list[i].x = x;
         icon_list[i].y = y;

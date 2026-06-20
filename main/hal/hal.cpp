@@ -13,6 +13,7 @@
 #include <driver/gpio.h>
 #include <string.h>
 #include "file_system/wear_levelling.h"
+#include "../credentials.h"
 
 #define delay(ms) vTaskDelay(pdMS_TO_TICKS(ms))
 
@@ -120,6 +121,15 @@ namespace HAL
         // buzz.tone(4000, 50);
     }
 
+    void HAL::_wifi_mqtt_init()
+    {
+        if (!wifi.begin(ASTROLABE_WIFI_SSID, ASTROLABE_WIFI_PASS)) {
+            ESP_LOGE(TAG, "WiFi connect failed — MQTT unavailable");
+            return;
+        }
+        mqtt.begin(ASTROLABE_MQTT_URI, ASTROLABE_MQTT_USER, ASTROLABE_MQTT_PASS);
+    }
+
     void HAL::init()
     {
         ESP_LOGI(TAG, "init");
@@ -130,7 +140,6 @@ namespace HAL
         _encoder_init();
 
         /* Init i2c port 0 (for Tp) */
-        // i2c_init(I2C_NUM_0, 11, 12, 100000, true);
         i2c_init(I2C_NUM_0, HAL_PIN_TP_I2C_SDA, HAL_PIN_TP_I2C_SCL, 100000, true);
 
         /* Display init */
@@ -138,15 +147,13 @@ namespace HAL
 
         _buzz_init();
 
-// /* Init file system */
-// wear_levelling_init();
+        /* WiFi + MQTT */
+        _wifi_mqtt_init();
 
 /* Init lvgl */
 #if LVGL_ENABLE
         lvgl.init(&display, &encoder, &tp);
 #endif
-
-        // _encoder_init();
     }
 
     void HAL::powerOn()

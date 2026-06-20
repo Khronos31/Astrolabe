@@ -14,11 +14,23 @@ cmake_minimum_required(VERSION 3.16)
 # Enable factory test
 add_definitions(-DENABLE_FACTORY_TEST)
 
-# WiFi test setting
+# WiFi test setting (factory test app)
 add_definitions(-DFACTORY_TEST_WIFI_SSID="?")
 add_definitions(-DFACTORY_TEST_WIFI_PASSWORD="?")
-# add_definitions(-DFACTORY_TEST_WIFI_SSID="?")
-# add_definitions(-DFACTORY_TEST_WIFI_PASSWORD="?")
+
+# Astrolabe WiFi / MQTT credentials — loaded from credentials.cmake (gitignored).
+# Copy credentials.cmake.example → credentials.cmake and fill in your values.
+set(ASTROLABE_WIFI_SSID "")
+set(ASTROLABE_WIFI_PASS "")
+set(ASTROLABE_MQTT_URI  "mqtt://192.168.1.130:1883")
+set(ASTROLABE_MQTT_USER "")
+set(ASTROLABE_MQTT_PASS "")
+include(${CMAKE_SOURCE_DIR}/credentials.cmake OPTIONAL)
+# Write values into a header to safely handle special characters (e.g. #, ', \).
+configure_file(
+    ${CMAKE_SOURCE_DIR}/main/credentials.h.in
+    ${CMAKE_SOURCE_DIR}/main/credentials.h
+)
 
 
 # Font setting

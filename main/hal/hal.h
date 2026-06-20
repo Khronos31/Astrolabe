@@ -21,6 +21,8 @@
 #endif
 #include "tp/hal_tp.hpp"
 #include "rtc/hal_rtc.hpp"
+#include "wifi/hal_wifi.hpp"
+#include "mqtt/hal_mqtt.hpp"
 
 namespace HAL
 {
@@ -32,6 +34,7 @@ namespace HAL
         void _display_init();
         void _encoder_init();
         void _buzz_init();
+        void _wifi_mqtt_init();
 
     public:
         HAL() = default;
@@ -57,6 +60,10 @@ namespace HAL
 
         /* RTC */
         PCF8563::PCF8563 rtc;
+
+        /* Network */
+        WiFiSTA    wifi;
+        MQTTClient mqtt;
 
         /**
          * @brief Init
