@@ -278,24 +278,6 @@ void Launcher::_app_open_callback(uint8_t selectedNum)
         case 1:
             app_ptr = new MOONCAKE::USER_APP::AppColorTemp;
             break;
-        case 2:
-            app_ptr = new MOONCAKE::USER_APP::RFID_Test;
-            break;
-        case 3:
-            app_ptr = new MOONCAKE::USER_APP::Set_Brightness;
-            break;
-        case 4:
-            app_ptr = new MOONCAKE::USER_APP::WiFi_Scan;
-            break;
-        case 5:
-            app_ptr = new MOONCAKE::USER_APP::BLE_Server;
-            break;
-        case 6:
-            app_ptr = new MOONCAKE::USER_APP::VideoShit;
-            break;
-        case 7:
-            app_ptr = new MOONCAKE::USER_APP::MoreMenu;
-            break;
         default:
             break;
     };

@@ -15,14 +15,6 @@
 #include "launcher_render_callback.hpp"
 #include "../utilities/gui_base/gui_base.h"
 
-#include "../app_lcd_test/app_lcd_test.h"
-#include "../app_temp_demo/app_temp_demo.h"
-#include "../app_rtc_test/app_rtc_test.h"
-#include "../app_rfid_test/app_rfid_test.h"
-#include "../app_set_brightness/app_set_brightness.h"
-#include "../app_wifi_scan/app_wifi_scan.h"
-#include "../app_more_menu/app_more_menu.h"
-#include "../app_ble_server/app_ble_server.h"
 #include "../app_dimmer/app_dimmer.h"
 #include "../app_color_temp/app_color_temp.h"
 

@@ -10,8 +10,9 @@ namespace DIMMER {
         int       brightness     = 128;   // 0-255
         bool      is_on          = false;
         bool      state_received = false; // got first MQTT state
-        bool      publish_pending = false;
-        uint32_t  last_publish_ms = 0;
+        bool      publish_pending    = false;
+        uint32_t  last_publish_ms    = 0;
+        uint32_t  last_local_change_ms = 0;  // ignore incoming state for 2s after local change
     };
 }
 

@@ -65,12 +65,12 @@ static std::array<uint32_t, ICON_NUM> icon_color_list = {
 static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
     "LIGHT", "STUDY",
     "COLOR", "TEMP",
-    "RFID", "TEST",
-    "BRIGHTNESS", "SET",
-    "WIFI", "SCAN",
-    "BLE", "SERVER",
-    "TEMP CTRL", "DEMO",
-    "MORE", ""
+    "", "",
+    "", "",
+    "", "",
+    "", "",
+    "", "",
+    "", ""
 };
 
 /* Icon pic */
