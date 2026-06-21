@@ -32,7 +32,7 @@
 #define ICON_TAG_UP_OFFSET          -24
 #define ICON_TAG_DOWN_OFFSET        0
 
-#define ICON_NUM                    4
+#define ICON_NUM                    6
 
 
 /* Struct to hold icon value */
@@ -55,6 +55,8 @@ static std::array<uint32_t, ICON_NUM> icon_color_list = {
     0x1A6838,  // deep green (AC)
     0x2A1060,  // deep purple (goodnight)
     0x0A2040,  // dark navy (clock)
+    0x0A4028,  // spotify green (media)
+    0x102856,  // slate blue (cover)
 };
 
 /* Icon tag */
@@ -63,6 +65,8 @@ static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
     "AC", "CTRL",
     "GOOD", "NIGHT",
     "CLOCK", "",
+    "MEDIA", "",
+    "COVER", "",
 };
 
 /* Icon pic */
@@ -71,6 +75,8 @@ static std::array<const uint16_t*, ICON_NUM> icon_pic_list = {
     image_data_icon_temp,        // AC
     image_data_icon_moon,        // goodnight
     image_data_icon_rtc,         // clock
+    image_data_icon_note,        // media
+    image_data_icon_curtain,     // cover
 };
 
 /* Sprite to render icon with transparency */

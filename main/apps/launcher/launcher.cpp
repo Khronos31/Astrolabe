@@ -44,7 +44,7 @@ void Launcher::_menu_init()
     int a = 120;
     int b = 120;
     int r = 60;
-    int n = 4;
+    int n = 6;
     int x;
     int y;
     for (int i = 0; i < n; i++)
@@ -76,7 +76,7 @@ void Launcher::_icon_list_init()
     int a = 120;
     int b = 120;
     int r = 190 / 2;
-    int n = 4;
+    int n = 6;
     int x;
     int y;
     for (int i = 0; i < (int)icon_list.size(); i++)
@@ -293,6 +293,12 @@ void Launcher::_app_open_callback(uint8_t selectedNum)
             break;
         case 3:
             app_ptr = new MOONCAKE::USER_APP::AppClock;
+            break;
+        case 4:
+            app_ptr = new MOONCAKE::USER_APP::AppMedia;
+            break;
+        case 5:
+            app_ptr = new MOONCAKE::USER_APP::AppCover;
             break;
         default:
             break;

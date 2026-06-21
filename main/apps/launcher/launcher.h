@@ -19,6 +19,8 @@
 #include "../app_ac/app_ac.h"
 #include "../app_goodnight/app_goodnight.h"
 #include "../app_clock/app_clock.h"
+#include "../app_media/app_media.h"
+#include "../app_cover/app_cover.h"
 
 
 
