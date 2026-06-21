@@ -32,7 +32,7 @@
 #define ICON_TAG_UP_OFFSET          -24
 #define ICON_TAG_DOWN_OFFSET        0
 
-#define ICON_NUM                    6
+#define ICON_NUM                    7
 
 
 /* Struct to hold icon value */
@@ -57,6 +57,7 @@ static std::array<uint32_t, ICON_NUM> icon_color_list = {
     0x0A2040,  // dark navy (clock)
     0x0A4028,  // spotify green (media)
     0x102856,  // slate blue (cover)
+    0x004840,  // dark teal (embodied)
 };
 
 /* Icon tag */
@@ -67,6 +68,7 @@ static std::array<std::string, ICON_NUM * 2> icon_tag_list = {
     "CLOCK", "",
     "MEDIA", "",
     "COVER", "",
+    "CLAUDE", "",
 };
 
 /* Icon pic */
@@ -77,6 +79,7 @@ static std::array<const uint16_t*, ICON_NUM> icon_pic_list = {
     image_data_icon_rtc,         // clock
     image_data_icon_note,        // media
     image_data_icon_curtain,     // cover
+    image_data_icon_embodied,    // embodied HA
 };
 
 /* Sprite to render icon with transparency */

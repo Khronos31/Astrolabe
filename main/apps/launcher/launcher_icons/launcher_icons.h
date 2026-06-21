@@ -5,3 +5,4 @@
 #include "icon_moon.h"
 #include "icon_note.h"
 #include "icon_curtain.h"
+#include "icon_embodied.h"

@@ -21,6 +21,7 @@
 #include "../app_clock/app_clock.h"
 #include "../app_media/app_media.h"
 #include "../app_cover/app_cover.h"
+#include "../app_embodied/app_embodied.h"
 
 
 
