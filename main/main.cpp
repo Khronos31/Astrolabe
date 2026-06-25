@@ -35,5 +35,6 @@ extern "C" void app_main(void)
     while (1)
     {
         app_launcher.onRunning();
+        delay(10);
     }
 }

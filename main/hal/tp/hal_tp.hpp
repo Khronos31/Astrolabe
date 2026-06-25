@@ -9,9 +9,17 @@
  * 
  */
 #pragma once
+#include "../hal_common_define.h"
+#include <driver/gpio.h>
 #include <driver/i2c.h>
+#include <esp_err.h>
 #include <esp_log.h>
 #include <cstring>
+
+namespace HAL
+{
+    bool i2c_init(i2c_port_t i2cPort, int sda, int scl, uint32_t clkSpeed, bool pullUpEnable);
+}
 
 
 /** @brief FT5x06 register map and function codes */
@@ -111,20 +119,55 @@ namespace FT3267
             Config_t _cfg;
             uint8_t _data_buffer[7];
             TouchPoint_t _touch_point_buffer;
+            uint8_t _i2c_fail_count = 0;
 
 
-            inline esp_err_t _writr_reg(uint8_t reg, uint8_t data)
+            inline bool _recover_i2c()
             {
-                _data_buffer[0] = reg;
-                _data_buffer[1] = data; 
-                return i2c_master_write_to_device(_cfg.i2c_port, _cfg.dev_addr, _data_buffer, 2, pdMS_TO_TICKS(200));
+                ESP_LOGW(TAG, "reinitializing touch I2C");
+                i2c_driver_delete(_cfg.i2c_port);
+                if (!HAL::i2c_init(_cfg.i2c_port, HAL_PIN_TP_I2C_SDA, HAL_PIN_TP_I2C_SCL, 100000, true))
+                {
+                    ESP_LOGE(TAG, "touch I2C reinit failed");
+                    return false;
+                }
+
+                _tp_init();
+                return true;
             }
 
 
-            inline esp_err_t _read_reg(uint8_t reg, uint8_t readSize)
+            inline bool _handle_i2c_result(const char* op, esp_err_t ret)
+            {
+                if (ret == ESP_OK)
+                {
+                    _i2c_fail_count = 0;
+                    return true;
+                }
+
+                ESP_LOGW(TAG, "%s failed: %s", op, esp_err_to_name(ret));
+                if (++_i2c_fail_count < 3)
+                {
+                    return false;
+                }
+
+                _i2c_fail_count = 0;
+                return _recover_i2c();
+            }
+
+
+            inline bool _writr_reg(uint8_t reg, uint8_t data)
+            {
+                _data_buffer[0] = reg;
+                _data_buffer[1] = data; 
+                return _handle_i2c_result("touch write", i2c_master_write_to_device(_cfg.i2c_port, _cfg.dev_addr, _data_buffer, 2, pdMS_TO_TICKS(200)));
+            }
+
+
+            inline bool _read_reg(uint8_t reg, uint8_t readSize)
             {
                 /* Store data into buffer */
-                return i2c_master_write_read_device(_cfg.i2c_port, _cfg.dev_addr, &reg, 1, _data_buffer, readSize, pdMS_TO_TICKS(200));
+                return _handle_i2c_result("touch read", i2c_master_write_read_device(_cfg.i2c_port, _cfg.dev_addr, &reg, 1, _data_buffer, readSize, pdMS_TO_TICKS(200)));
             }
 
 
@@ -149,13 +192,13 @@ namespace FT3267
                 _writr_reg(FT5x06_ID_G_THDIFF, 20);
 
                 // Delay to enter 'Monitor' status (s)
-                _writr_reg(FT5x06_ID_G_TIME_ENTER_MONITOR, 2);
+                // _writr_reg(FT5x06_ID_G_TIME_ENTER_MONITOR, 2);
 
                 // Period of 'Active' status (ms)
-                _writr_reg(FT5x06_ID_G_PERIODACTIVE, 12);
+                // _writr_reg(FT5x06_ID_G_PERIODACTIVE, 12);
 
                 // Timer to enter 'idle' when in 'Monitor' (ms)
-                _writr_reg(FT5x06_ID_G_PERIODMONITOR, 40);
+                // _writr_reg(FT5x06_ID_G_PERIODMONITOR, 40);
 
                 // _read_reg(0x90, 1);
                 // printf("0x%X\n", _data_buffer[0]);
@@ -188,6 +231,7 @@ namespace FT3267
                 gpio_set_direction(GPIO_NUM_14, GPIO_MODE_INPUT);
                 gpio_set_pull_mode(GPIO_NUM_14, GPIO_PULLUP_ONLY);
 
+                _i2c_fail_count = 0;
                 _tp_init();
 
                 return true;
@@ -197,7 +241,10 @@ namespace FT3267
             inline uint8_t getTouchPointsNum()
             {
                 _data_buffer[0] = 0;
-                _read_reg(FT5x06_TOUCH_POINTS, 1);
+                if (!_read_reg(FT5x06_TOUCH_POINTS, 1))
+                {
+                    return 0;
+                }
                 return _data_buffer[0];
             }
 
@@ -209,14 +256,20 @@ namespace FT3267
                 _touch_point_buffer.y = -1;
 
                 /* Get touch num */
-                _read_reg(FT5x06_TOUCH_POINTS, 1);
+                if (!_read_reg(FT5x06_TOUCH_POINTS, 1))
+                {
+                    return _touch_point_buffer;
+                }
                 _data_buffer[0] = _data_buffer[0] & 0x0F;
                 _touch_point_buffer.touch_num = _data_buffer[0];
 
                 /* Get postion */
                 if (_data_buffer[0] != 0)
                 {
-                    _read_reg(FT5x06_TOUCH1_XH, 4);
+                    if (!_read_reg(FT5x06_TOUCH1_XH, 4))
+                    {
+                        return _touch_point_buffer;
+                    }
                     _touch_point_buffer.x = ((_data_buffer[0] & 0x0f) << 8) + _data_buffer[1];
                     _touch_point_buffer.y = ((_data_buffer[2] & 0x0f) << 8) + _data_buffer[3];
                 }
