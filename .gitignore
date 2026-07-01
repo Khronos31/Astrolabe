@@ -3,4 +3,5 @@ build
 managed_components
 credentials.cmake
 main/credentials.h
+warnings.txt
 
