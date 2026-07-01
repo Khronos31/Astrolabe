@@ -5,7 +5,7 @@
 
 #define TOPIC_SET   "astrolabe/cover/study/set"
 #define TOPIC_STATE "astrolabe/cover/study/state"
-#define PUBLISH_INTERVAL_MS 200
+#define PUBLISH_SETTLE_MS 400  // ダイヤル操作が止まってからpublishするまでの静定時間
 #define POS_STEP 5
 
 using namespace MOONCAKE::USER_APP;
@@ -32,7 +32,11 @@ void AppCover::onCreate()
             if (p) {
                 sscanf(p + 11, "%d", &_data.position);
                 _data.position = std::max(0, std::min(100, _data.position));
-                _data.target_position = _data.position;
+                /* target_positionはユーザー操作専用。初回受信時のみ実位置で初期化し、
+                   以降は物理カーテンが移動中の実位置で上書きしない（表示が戻る不具合対策） */
+                if (!_data.state_received) {
+                    _data.target_position = _data.position;
+                }
             }
 
             const char* s = strstr(payload, "\"state\":\"");
@@ -58,7 +62,8 @@ void AppCover::_handle_encoder()
     if (!hal->encoder.wasMoved(true)) return;
 
     int dir = hal->encoder.getDirection();
-    _data.target_position += (dir < 1) ? POS_STEP : -POS_STEP;
+    /* 右回転(dir<1)で閉じる(position減)、左回転で開く */
+    _data.target_position += (dir < 1) ? -POS_STEP : POS_STEP;
     _data.target_position = std::max(0, std::min(100, _data.target_position));
 
     _data.last_local_change_ms = millis();
@@ -101,8 +106,10 @@ void AppCover::onRunning()
 
     _handle_encoder();
 
+    /* ダイヤルを回している間はpublishせず、操作が止まって静定してから最終目標値のみ送る
+       （逐次publishすると物理カーテンの移動が毎回割り込まれ、ほとんど動かなくなるため） */
     if (_data.publish_pending &&
-        millis() - _data.last_publish_ms >= PUBLISH_INTERVAL_MS)
+        millis() - _data.last_local_change_ms >= PUBLISH_SETTLE_MS)
     {
         _publish_position();
         _data.publish_pending = false;
@@ -145,8 +152,9 @@ void AppCover::_render()
     /* Position ring */
     canvas->fillArc(CX, CY, R_OUT, R_IN, ARC_START, ARC_START + ARC_SWEEP, (uint32_t)0x0A1828);
     if (_data.target_position > 0) {
-        float angle = ARC_START + (_data.target_position / 100.0f) * ARC_SWEEP;
-        canvas->fillArc(CX, CY, R_OUT, R_IN, ARC_START, angle, (uint32_t)0x2A7EC0);
+        /* 閉(0%)=右、開(100%)=左になるよう、ARC_START+ARC_SWEEP側を固定端にして逆向きに塗る */
+        float angle = ARC_START + (1.0f - _data.target_position / 100.0f) * ARC_SWEEP;
+        canvas->fillArc(CX, CY, R_OUT, R_IN, angle, ARC_START + ARC_SWEEP, (uint32_t)0x2A7EC0);
     }
 
     /* Position % (中央) */
