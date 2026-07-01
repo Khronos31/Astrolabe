@@ -9,6 +9,7 @@
 #include "../hal/hal.h"
 #include "app.h"
 #include "common_define.h"
+#include <vector>
 
 namespace MOONCAKE { namespace USER_APP {
 
@@ -35,9 +36,30 @@ namespace UI {
 class AppUI : public APP_BASE {
 protected:
     HAL::HAL* hal = nullptr;
+    std::vector<HAL::MQTTSubscriptionId_t> _mqtt_subscription_ids;
 
     /* getUserData() から HAL を取得（onSetupで呼ぶ） */
     void _bind_hal() { hal = (HAL::HAL*)getUserData(); }
+
+    HAL::MQTTSubscriptionId_t _mqtt_subscribe(const char* topic, HAL::MQTTSubCallback_t callback) {
+        if (!hal) return 0;
+        auto id = hal->mqtt.subscribe(topic, callback);
+        if (id != 0) {
+            _mqtt_subscription_ids.push_back(id);
+        }
+        return id;
+    }
+
+    void _clear_mqtt_subscriptions() {
+        if (!hal) {
+            _mqtt_subscription_ids.clear();
+            return;
+        }
+        for (auto id : _mqtt_subscription_ids) {
+            hal->mqtt.unsubscribe(id);
+        }
+        _mqtt_subscription_ids.clear();
+    }
 
     /* 最終操作時刻を更新（アイドルタイムアウト抑止） */
     void _mark_activity() { hal->last_activity_ms = millis(); }
@@ -93,6 +115,11 @@ protected:
     /* 長押し判定なしの簡易版 */
     UI::Press _handle_center_touch() {
         return _handle_center_touch(0, [] {});
+    }
+
+public:
+    ~AppUI() override {
+        _clear_mqtt_subscriptions();
     }
 };
 

@@ -1,7 +1,9 @@
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "mqtt_client.h"
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -16,6 +18,7 @@ struct MQTTMessage_t {
 };
 
 using MQTTSubCallback_t = std::function<void(const char* topic, const char* payload, int payload_len)>;
+using MQTTSubscriptionId_t = uint32_t;
 
 class MQTTClient {
 public:
@@ -31,10 +34,14 @@ public:
     bool publish(const char* topic, const char* payload, int qos = 0, bool retain = false);
 
     /**
-     * Register a subscription. If already connected, subscribes immediately.
+     * Register a subscription and return its handle.
+     * If already connected, subscribes immediately.
      * Callback is invoked from the main task via poll().
      */
-    void subscribe(const char* topic, MQTTSubCallback_t callback);
+    MQTTSubscriptionId_t subscribe(const char* topic, MQTTSubCallback_t callback);
+
+    /** Unregister a previously created subscription. */
+    bool unsubscribe(MQTTSubscriptionId_t id);
 
     /**
      * Drain the received-message queue and invoke callbacks.
@@ -49,8 +56,11 @@ private:
     esp_mqtt_client_handle_t _client    = nullptr;
     volatile bool            _connected = false;
     QueueHandle_t            _msg_queue = nullptr;
+    SemaphoreHandle_t        _subs_mutex = nullptr;
+    MQTTSubscriptionId_t     _next_sub_id = 1;
 
     struct Sub_t {
+        MQTTSubscriptionId_t id;
         std::string       topic;
         MQTTSubCallback_t callback;
     };

@@ -8,6 +8,33 @@ static const char* TAG = "MQTTClient";
 
 namespace HAL {
 
+namespace {
+class MutexLock {
+public:
+    explicit MutexLock(SemaphoreHandle_t mutex) : _mutex(mutex)
+    {
+        if (_mutex) {
+            xSemaphoreTake(_mutex, portMAX_DELAY);
+            _locked = true;
+        }
+    }
+
+    ~MutexLock()
+    {
+        if (_locked) {
+            xSemaphoreGive(_mutex);
+        }
+    }
+
+    MutexLock(const MutexLock&) = delete;
+    MutexLock& operator=(const MutexLock&) = delete;
+
+private:
+    SemaphoreHandle_t _mutex = nullptr;
+    bool              _locked = false;
+};
+} // namespace
+
 void MQTTClient::_event_handler(void* arg, esp_event_base_t /*event_base*/,
                                 int32_t event_id, void* event_data)
 {
@@ -19,9 +46,12 @@ void MQTTClient::_event_handler(void* arg, esp_event_base_t /*event_base*/,
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "connected");
             self->_connected = true;
-            for (auto& s : self->_subs) {
-                esp_mqtt_client_subscribe(self->_client, s.topic.c_str(), 0);
-                ESP_LOGI(TAG, "subscribed: %s", s.topic.c_str());
+            {
+                MutexLock lock(self->_subs_mutex);
+                for (auto& s : self->_subs) {
+                    esp_mqtt_client_subscribe(self->_client, s.topic.c_str(), 0);
+                    ESP_LOGI(TAG, "subscribed: %s", s.topic.c_str());
+                }
             }
             break;
 
@@ -57,9 +87,17 @@ void MQTTClient::_event_handler(void* arg, esp_event_base_t /*event_base*/,
 
 bool MQTTClient::begin(const char* uri, const char* username, const char* password)
 {
+    _subs_mutex = xSemaphoreCreateMutex();
+    if (!_subs_mutex) {
+        ESP_LOGE(TAG, "mutex create failed");
+        return false;
+    }
+
     _msg_queue = xQueueCreate(MSG_QUEUE_DEPTH, sizeof(MQTTMessage_t));
     if (!_msg_queue) {
         ESP_LOGE(TAG, "queue create failed");
+        vSemaphoreDelete(_subs_mutex);
+        _subs_mutex = nullptr;
         return false;
     }
 
@@ -71,6 +109,10 @@ bool MQTTClient::begin(const char* uri, const char* username, const char* passwo
     _client = esp_mqtt_client_init(&cfg);
     if (!_client) {
         ESP_LOGE(TAG, "client init failed");
+        vQueueDelete(_msg_queue);
+        _msg_queue = nullptr;
+        vSemaphoreDelete(_subs_mutex);
+        _subs_mutex = nullptr;
         return false;
     }
 
@@ -89,13 +131,41 @@ bool MQTTClient::publish(const char* topic, const char* payload, int qos, bool r
     return id != -1;
 }
 
-void MQTTClient::subscribe(const char* topic, MQTTSubCallback_t callback)
+MQTTSubscriptionId_t MQTTClient::subscribe(const char* topic, MQTTSubCallback_t callback)
 {
-    _subs.push_back({topic, callback});
+    if (!topic || !topic[0]) return 0;
+
+    MutexLock lock(_subs_mutex);
+    MQTTSubscriptionId_t id = _next_sub_id++;
+    if (id == 0) {
+        id = _next_sub_id++;
+    }
+    _subs.push_back({id, topic, callback});
     if (_connected && _client) {
         esp_mqtt_client_subscribe(_client, topic, 0);
         ESP_LOGI(TAG, "subscribed: %s", topic);
     }
+    return id;
+}
+
+bool MQTTClient::unsubscribe(MQTTSubscriptionId_t id)
+{
+    if (id == 0) return false;
+
+    MutexLock lock(_subs_mutex);
+    auto it = std::find_if(_subs.begin(), _subs.end(),
+                           [id](const Sub_t& s) { return s.id == id; });
+    if (it == _subs.end()) {
+        return false;
+    }
+
+    if (_connected && _client) {
+        esp_mqtt_client_unsubscribe(_client, it->topic.c_str());
+        ESP_LOGI(TAG, "unsubscribed: %s", it->topic.c_str());
+    }
+
+    _subs.erase(it);
+    return true;
 }
 
 void MQTTClient::poll()
@@ -103,9 +173,18 @@ void MQTTClient::poll()
     if (!_msg_queue) return;
     MQTTMessage_t msg;
     while (xQueueReceive(_msg_queue, &msg, 0) == pdTRUE) {
-        for (auto& s : _subs) {
-            if (s.topic == msg.topic) {
-                s.callback(msg.topic, msg.payload, msg.payload_len);
+        std::vector<MQTTSubCallback_t> callbacks;
+        {
+            MutexLock lock(_subs_mutex);
+            for (auto& s : _subs) {
+                if (s.topic == msg.topic) {
+                    callbacks.push_back(s.callback);
+                }
+            }
+        }
+        for (auto& callback : callbacks) {
+            if (callback) {
+                callback(msg.topic, msg.payload, msg.payload_len);
             }
         }
     }

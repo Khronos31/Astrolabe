@@ -27,7 +27,7 @@ void AppLight::onCreate()
 {
     _log("onCreate");
 
-    hal->mqtt.subscribe(TOPIC_STATE,
+    _mqtt_subscribe(TOPIC_STATE,
         [this](const char* /*topic*/, const char* payload, int /*len*/) {
             if (millis() - _data.last_local_change_ms < 2000) return;
 
@@ -237,5 +237,6 @@ void AppLight::_render()
 
 void AppLight::onDestroy()
 {
+    _clear_mqtt_subscriptions();
     _log("onDestroy");
 }
